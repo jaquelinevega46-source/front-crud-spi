@@ -32,13 +32,14 @@ export const obtenerUsuarios = async () => {
   }
 };
 
-export const crearUsuario = async ({ nombre, correo, contrasenia, rol }) => {
+export const crearUsuario = async ({ nombre, correo, contrasenia, rol, acceptTerms }) => {
   try {
     const response = await axios.post("/users", {
       name: nombre,
       email: correo,
       password: contrasenia,
       role: rol,
+      ...(acceptTerms !== undefined ? { acceptTerms } : {}),
     });
 
     return { ok: true, data: response.data };

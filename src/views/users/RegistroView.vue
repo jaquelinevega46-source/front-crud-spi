@@ -30,7 +30,33 @@
             </p>
           </div>
 
-          <Button class="w-full mt-2" type="submit" :disabled="loading">
+          <!-- Casilla de términos y condiciones -->
+          <div class="space-y-1.5 pt-1">
+            <div class="flex items-start gap-2">
+              <input
+                id="acceptTerms"
+                type="checkbox"
+                v-model="form.acceptTerms"
+                @change="onTermsChange"
+                class="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer"
+              />
+              <label for="acceptTerms" class="text-sm text-slate-600 dark:text-slate-300 leading-snug select-none">
+                Acepto los
+                <button
+                  type="button"
+                  @click="modalTerminosAbierto = true"
+                  class="text-primary font-medium underline hover:opacity-80"
+                >
+                  términos y condiciones
+                </button>
+              </label>
+            </div>
+            <p v-if="getFieldError('acceptTerms')" class="text-xs text-red-500">
+              {{ getFieldError('acceptTerms') }}
+            </p>
+          </div>
+
+          <Button class="w-full mt-2" type="submit" :disabled="loading || !form.acceptTerms">
             <span v-if="loading">Registrando...</span>
             <span v-else>Registrarse</span>
           </Button>
@@ -42,6 +68,31 @@
         </p>
       </CardContent>
     </Card>
+
+    <!-- Modal de Términos y Condiciones -->
+    <Dialog v-model:open="modalTerminosAbierto">
+      <DialogContent class="sm:max-w-lg max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Términos y Condiciones</DialogTitle>
+          <DialogDescription>
+            Lee detenidamente las condiciones de uso de CRUD-SPI antes de continuar.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="overflow-y-auto pr-2 my-2 max-h-[50vh]">
+          <TerminosCondiciones />
+        </div>
+
+        <DialogFooter class="gap-2 sm:gap-0">
+          <Button type="button" variant="outline" @click="modalTerminosAbierto = false">
+            Cerrar
+          </Button>
+          <Button type="button" @click="aceptarTerminos">
+            Acepto
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
@@ -54,6 +105,15 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import TerminosCondiciones from '@/components/TerminosCondiciones.vue'
 import { crearUsuario } from '@/api/usuario'
 import { useTheme } from '@/composables/useTheme'
 import { useFormValidation } from '@/composables/useFormValidation'
@@ -70,13 +130,30 @@ const { isDark, toggleTheme } = useTheme()
 const { getFieldError, markAsTouched, validateField, validateAll } = useFormValidation(registroSchema)
 
 const loading = ref(false)
-const form = reactive({ nombre: '', correo: '', contrasenia: '' })
+const modalTerminosAbierto = ref(false)
+const form = reactive({
+  nombre: '',
+  correo: '',
+  contrasenia: '',
+  acceptTerms: false,
+})
 
 const onBlur = (campo) => {
   markAsTouched(campo)
   validateField(campo, form)
 }
 const onInput = (campo) => validateField(campo, form)
+
+const onTermsChange = () => {
+  markAsTouched('acceptTerms')
+  validateField('acceptTerms', form)
+}
+
+const aceptarTerminos = () => {
+  form.acceptTerms = true
+  onTermsChange()
+  modalTerminosAbierto.value = false
+}
 
 const handleRegistro = async () => {
   Object.keys(form).forEach(markAsTouched)

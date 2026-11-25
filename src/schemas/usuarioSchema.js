@@ -25,6 +25,9 @@ export const registroSchema = z.object({
   nombre,
   correo,
   contrasenia,
+  acceptTerms: z.literal(true, {
+    errorMap: () => ({message: 'NO SE HAN ACEPTADO LOS TERMINOS Y CONDICIONES'}),
+  }),
 })
 
 export const editarUsuarioSchema = z.object({
