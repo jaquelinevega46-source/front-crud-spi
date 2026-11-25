@@ -83,3 +83,34 @@ export const eliminarUsuario = async (id) => {
     };
   }
 };
+
+export const solicitarRecuperacion = async(correo) => {
+  try{
+    const response = await axios.post("/password/forgot", {
+      email: correo,
+    });
+    return { ok: true, data: response.data};
+  } catch (error){
+    return{
+      ok: false,
+      message: error.response?.data?.error || "ERROR AL SOLICITAR LA RECUPERACION",
+      status: error.response?.status || 500,
+    };
+  }
+};
+
+export const restablecerContrasenia = async (token, nuevaContrasenia) => {
+  try{
+    const response = await axios.post("/password/reset", {
+      token,
+      password: nuevaContrasenia,
+    });
+    return{ ok: true, data: response.data };
+  } catch(error){
+    return {
+      ok: false,
+      message: error.response?.data?.error || "ERROR AL RESTABLECER LA CONTRASEÑA",
+      status: error.response?.status || 500,
+    };
+  }
+};

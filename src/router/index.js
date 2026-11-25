@@ -18,7 +18,7 @@ const router = createRouter({
     {
       path: "/registro",
       name: "registro",
-      component: () => import("@/views/users/RegistroView.vue"),
+      component: () => import("@/views/users/RegistroPasswordView.vue"),
       meta: { title: "Registro | CRUD-SPI", guestOnly: true },
     },
     {
@@ -32,6 +32,18 @@ const router = createRouter({
       name: "not-found",
       component: NotFoundRouter,
       meta: { title: "Página no encontrada", requiresAuth: false },
+    },
+    {
+      path: "/registro",
+      name: "registro",
+      component: () => import("@/views/users/RegistroPasswordView.vue"),
+      meta: { title: "Registro | CRUD-SPI", guestOnly: true},
+    },
+    {
+      path: "/restablecer/:token",
+      name: "restablecer-password",
+      component: () => import("@/views/users/Restablecer.vue"),
+      meta: { title: "RESTABLECER CONTRASEÑA | CRUD-SPI", guestOnly: true},
     },
   ],
 });

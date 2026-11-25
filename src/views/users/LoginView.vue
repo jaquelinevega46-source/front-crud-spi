@@ -31,7 +31,16 @@
           </div>
 
           <div class="space-y-1.5">
-            <Label for="password">Contraseña</Label>
+            <div class="flex items-center justify-between">
+              <Label for="password">Contraseña</Label>
+              <button
+                type="button"
+                @click="abrirModalRecuperacion"
+                class="text-xs text-primary hover:underline font-medium"
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
             <Input id="password" type="password" placeholder="Contraseña" v-model="formLogin.contrasenia"
               @blur="onBlur('contrasenia')" @input="onInput('contrasenia')"
               :aria-invalid="!!getFieldError('contrasenia')" autocomplete="current-password" />
@@ -52,6 +61,42 @@
         </p>
       </CardContent>
     </Card>
+
+    <!-- Modal de Recuperación de Contraseña -->
+    <Dialog v-model:open="modalForgotAbierto">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Recuperar contraseña</DialogTitle>
+          <DialogDescription>
+            Ingresa tu correo electrónico y te enviaremos un enlace válido por 30 minutos para restablecer tu contraseña.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form @submit.prevent="handleForgotPassword" class="space-y-4 pt-2">
+          <div class="space-y-1.5">
+            <Label for="forgot-email">Correo electrónico</Label>
+            <Input
+              id="forgot-email"
+              type="email"
+              placeholder="correo@ejemplo.com"
+              v-model.trim="forgotEmail"
+              required
+              autocomplete="email"
+            />
+          </div>
+
+          <DialogFooter class="gap-2 sm:gap-0">
+            <Button type="button" variant="outline" @click="modalForgotAbierto = false">
+              Cancelar
+            </Button>
+            <Button type="submit" :disabled="loadingForgot || !forgotEmail">
+              <span v-if="loadingForgot">Enviando...</span>
+              <span v-else>Enviar enlace</span>
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
@@ -64,6 +109,15 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { solicitarRecuperacion } from '@/api/usuario'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
 import { useFormValidation } from '@/composables/useFormValidation'
@@ -77,6 +131,10 @@ const { getFieldError, markAsTouched, validateField, validateAll } = useFormVali
 const loading = ref(false)
 const formLogin = reactive({ correo: '', contrasenia: '' })
 
+const modalForgotAbierto = ref(false)
+const forgotEmail = ref('')
+const loadingForgot = ref(false)
+
 onMounted(() => {
   if (sessionStorage.getItem('sessionExpired')) {
     sessionStorage.removeItem('sessionExpired')
@@ -89,6 +147,27 @@ const onBlur = (campo) => {
   validateField(campo, formLogin)
 }
 const onInput = (campo) => validateField(campo, formLogin)
+
+const abrirModalRecuperacion = () => {
+  forgotEmail.value = formLogin.correo || ''
+  modalForgotAbierto.value = true
+}
+
+const handleForgotPassword = async () => {
+  if (!forgotEmail.value) return
+
+  loadingForgot.value = true
+  const res = await solicitarRecuperacion(forgotEmail.value)
+  loadingForgot.value = false
+
+  if (!res.ok) {
+    toast.error(res.message)
+    return
+  }
+
+  toast.success(res.data.message)
+  modalForgotAbierto.value = false
+}
 
 const handleLogin = async () => {
   Object.keys(formLogin).forEach(markAsTouched)
