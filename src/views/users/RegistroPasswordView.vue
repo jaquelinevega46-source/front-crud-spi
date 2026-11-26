@@ -30,7 +30,6 @@
             </p>
           </div>
 
-          <!-- Casilla de términos y condiciones -->
           <div class="space-y-1.5 pt-1">
             <div class="flex items-start gap-2">
               <input

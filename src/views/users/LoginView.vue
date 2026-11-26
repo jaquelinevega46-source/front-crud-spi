@@ -175,6 +175,7 @@ const handleLogin = async () => {
 
   loading.value = true
   const res = await authStore.login(formLogin.correo, formLogin.contrasenia)
+  router.push(authStore.isAdmin ? "/admin/usuarios" : "/usuario");
   loading.value = false
 
   if (!res.ok) {

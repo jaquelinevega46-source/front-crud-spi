@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
-import { loginUsuario } from "@/api/usuario";
+import { loginUsuario, obtenerPerfil } from "@/api/usuario";
 
 const limpiarSesion = () => {
   sessionStorage.removeItem("token");
@@ -14,6 +14,7 @@ export const useAuthStore = defineStore("auth", () => {
 
   const user = ref(null);
   const token = ref(null);
+  const rolVerificado = ref(false);
 
   const isAuthenticated = computed(() => !!token.value && !!user.value);
   const userRole = computed(() => user.value?.role || null);
@@ -50,6 +51,22 @@ export const useAuthStore = defineStore("auth", () => {
     }
   };
 
+  //verificando rol
+  const verificarRolServidor = async () => {
+    if (rolVerificado.value) return isAdmin.value;
+
+    const res = await obtenerPerfil();
+    if(!res.ok){
+      logout();
+      return false;
+    }
+
+    user.value = res.data.user;
+    sessionStorage.setItem("usuario", JSON.stringify(res.data.user));
+    rolVerificado.value = true;
+    return res.data.role==="admin";
+  };
+
   const login = async (correo, contrasenia) => {
     const res = await loginUsuario(correo, contrasenia);
     if (!res.ok) return { ok: false, message: res.message };
@@ -62,6 +79,7 @@ export const useAuthStore = defineStore("auth", () => {
 
     token.value = newToken;
     user.value = usuario;
+    rolVerificado.value=true;
 
     return { ok: true };
   };
@@ -69,6 +87,7 @@ export const useAuthStore = defineStore("auth", () => {
   const logout = () => {
     user.value = null;
     token.value = null;
+    rolVerificado.value = false;
     limpiarSesion();
     router.replace({ name: "login" });
   };
@@ -82,6 +101,7 @@ export const useAuthStore = defineStore("auth", () => {
     isTokenExpired,
     initAuth,
     ensureAuthReady,
+    verificarRolServidor,
     login,
     logout,
   };

@@ -114,3 +114,17 @@ export const restablecerContrasenia = async (token, nuevaContrasenia) => {
     };
   }
 };
+
+// usuario
+export const obtenerPerfil = async () => {
+  try {
+    const response = await axios.get("/me");
+    return {ok: true, daa: response.data};
+  }catch (error){
+    return {
+      ok: false,
+      message: error.response?.data?.error || "ERROR AL INICIAR SESION",
+      status: error.response?.status || 500,
+    };
+  }
+};

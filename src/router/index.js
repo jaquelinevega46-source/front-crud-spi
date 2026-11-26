@@ -22,18 +22,6 @@ const router = createRouter({
       meta: { title: "Registro | CRUD-SPI", guestOnly: true },
     },
     {
-      path: "/usuarios",
-      name: "usuarios",
-      component: () => import("@/views/usuarios/UsuariosView.vue"),
-      meta: { title: "Usuarios", requiresAuth: true },
-    },
-    {
-      path: "/:pathMatch(.*)*",
-      name: "not-found",
-      component: NotFoundRouter,
-      meta: { title: "Página no encontrada", requiresAuth: false },
-    },
-    {
       path: "/registro",
       name: "registro",
       component: () => import("@/views/users/RegistroPasswordView.vue"),
@@ -45,10 +33,41 @@ const router = createRouter({
       component: () => import("@/views/users/Restablecer.vue"),
       meta: { title: "RESTABLECER CONTRASEÑA | CRUD-SPI", guestOnly: true},
     },
+    {
+      path: "/admin/usuarios",
+      name: "admin-usuarios",
+      component: () => import("@/views/usuarios/UsuariosView.vue"),
+      meta: {title: "Administracion de Usuarios | CRUD-SPI", requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: "/usuario",
+      name: "usuario-perfil",
+      component: () => import("@/views/usuarios/PerfilUsuarioView.vue"),
+      meta:{ title: "MI PERFIL | CRUD-SPI", requiresAuth: true},
+    },
+    {
+      path: "/usuarios",
+      redirect: () => {
+        const authStore = useAuthStore();
+        authStore.ensureAuthReady();
+        return authStore.isAdmin ? "/admin/usuarios" : "/usuario";
+      },
+    },
+    {
+      path: "/admin/:pathMatch(.*)*",
+      meta: { requiresAuth: true, requiresAdmin: true },
+      redirect: "/admin/usuarios",
+    },
+    {
+      path: "/:pathMatch(.*)*",
+      name: "not-found",
+      component: NotFoundRouter,
+      meta: { title: "Página no encontrada", requiresAuth: false },
+    },
   ],
 });
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   if (to.meta?.title) {
     document.title = to.meta.title;
   }
@@ -69,11 +88,14 @@ router.beforeEach((to, _from, next) => {
   if (to.meta.guestOnly && authStore.isAuthenticated) {
     return next({ name: "usuarios" });
   }
-
-  if (to.meta.requiresAdmin && !authStore.isAdmin) {
-    return next({ name: "usuarios" });
+  //Admin
+  if(to.meta.requiresAdmin) {
+    const esAdminReal = await authStore.verificarRolServidor();
+    if(!esAdminReal) {
+      toast.error("NO TIENES PERMISOS DE ADMINISTRADOR");
+      return next({ name: "usuario-perfil"});
+    }
   }
-
   next();
 });
 
