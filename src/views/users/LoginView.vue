@@ -104,6 +104,6 @@ const handleLogin = async () => {
   }
 
   toast.success(`Bienvenid@, ${authStore.user.name}`)
-  router.push({ name: 'usuarios' })
+  router.push(authStore.isAdmin ? '/admin/usuarios' : '/usuario')
 }
 </script>
