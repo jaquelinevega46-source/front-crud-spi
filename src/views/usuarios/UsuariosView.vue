@@ -5,7 +5,7 @@
         <div>
           <h1 class="text-2xl font-semibold text-theme-primary">Usuarios registrados</h1>
           <p class="text-sm text-theme-muted">
-            {{ usuarios.length }} {{ usuarios.length === 1 ? 'usuario' : 'usuarios' }} en el sistema
+            {{ totalUsuarios }} {{ totalUsuarios === 1 ? 'usuario' : 'usuarios' }} en el sistema
           </p>
         </div>
 
@@ -34,37 +34,69 @@
           </TableHeader>
           <TableBody>
             <TableEmpty v-if="loading" :colspan="columnas">Cargando usuarios...</TableEmpty>
-            <TableEmpty v-else-if="!usuariosFiltrados.length" :colspan="columnas">
+            <TableEmpty v-else-if="!usuarios.length" :colspan="columnas">
               {{ busqueda ? 'Sin resultados para la búsqueda' : 'No hay usuarios registrados' }}
             </TableEmpty>
 
             <template v-else>
-            <TableRow v-for="usuario in usuariosFiltrados" :key="usuario.id">
-              <TableCell class="pl-4 text-theme-muted">{{ usuario.id }}</TableCell>
-              <TableCell class="font-medium">
-                {{ usuario.name }}
-                <span v-if="usuario.id === authStore.user?.id" class="ml-1 text-xs text-theme-muted">(tú)</span>
-              </TableCell>
-              <TableCell>{{ usuario.email }}</TableCell>
-              <TableCell>
-                <span :class="usuario.role === 'admin' ? 'badge-info' : 'badge-success'">
-                  {{ usuario.role === 'admin' ? 'Administrador' : 'Usuario' }}
-                </span>
-              </TableCell>
-              <TableCell v-if="authStore.isAdmin" class="text-right pr-4">
-                <Button variant="ghost" size="icon-sm" title="Editar" @click="abrirEditar(usuario)">
-                  <Pencil class="size-4" />
-                </Button>
-                <Button variant="ghost" size="icon-sm" title="Eliminar" class="text-destructive"
-                  :disabled="usuario.id === authStore.user?.id" @click="usuarioAEliminar = usuario">
-                  <Trash2 class="size-4" />
-                </Button>
-              </TableCell>
-            </TableRow>
+              <TableRow v-for="usuario in usuarios" :key="usuario.id">
+                <TableCell class="pl-4 text-theme-muted">{{ usuario.id }}</TableCell>
+                <TableCell class="font-medium">
+                  {{ usuario.name }}
+                  <span v-if="usuario.id === authStore.user?.id" class="ml-1 text-xs text-theme-muted">(tú)</span>
+                </TableCell>
+                <TableCell>{{ usuario.email }}</TableCell>
+                <TableCell>
+                  <span :class="usuario.role === 'admin' ? 'badge-info' : 'badge-success'">
+                    {{ usuario.role === 'admin' ? 'Administrador' : 'Usuario' }}
+                  </span>
+                </TableCell>
+                <TableCell v-if="authStore.isAdmin" class="text-right pr-4">
+                  <Button variant="ghost" size="icon-sm" title="Editar" @click="abrirEditar(usuario)">
+                    <Pencil class="size-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon-sm" title="Eliminar" class="text-destructive"
+                    :disabled="usuario.id === authStore.user?.id" @click="usuarioAEliminar = usuario">
+                    <Trash2 class="size-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
             </template>
           </TableBody>
         </Table>
       </Card>
+
+      <div v-if="totalUsuarios > limit" class="flex flex-col items-center justify-between gap-4 sm:flex-row">
+        <p class="text-sm text-theme-muted">
+          Mostrando {{ rangoInicio }} - {{ rangoFin }} de {{ totalUsuarios }} usuarios
+        </p>
+
+        <Pagination
+          :total="totalUsuarios"
+          :items-per-page="limit"
+          :sibling-count="1"
+          show-edges
+          :page="page"
+          @update:page="cambiarPagina"
+        >
+          <PaginationContent v-slot="{ items }">
+            <PaginationPrevious />
+
+            <template v-for="(item, index) in items" :key="index">
+              <PaginationItem
+                v-if="item.type === 'page'"
+                :value="item.value"
+                :is-active="item.value === page"
+              >
+                {{ item.value }}
+              </PaginationItem>
+              <PaginationEllipsis v-else :index="index" />
+            </template>
+
+            <PaginationNext />
+          </PaginationContent>
+        </Pagination>
+      </div>
     </div>
 
     <UsuarioFormDialog v-model:open="dialogForm" :usuario="usuarioEnEdicion" @guardado="cargarUsuarios" />
@@ -90,7 +122,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { Pencil, Plus, Search, Trash2 } from 'lucide-vue-next'
 import AppLayout from '@/layouts/AppLayout.vue'
@@ -107,6 +139,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -125,6 +165,10 @@ const usuarios = ref([])
 const loading = ref(false)
 const busqueda = ref('')
 
+const page = ref(1)
+const limit = ref(10)
+const totalUsuarios = ref(0)
+
 const dialogForm = ref(false)
 const usuarioEnEdicion = ref(null)
 
@@ -133,25 +177,44 @@ const eliminando = ref(false)
 
 const columnas = computed(() => (authStore.isAdmin ? 5 : 4))
 
-const usuariosFiltrados = computed(() => {
-  const q = busqueda.value.trim().toLowerCase()
-  if (!q) return usuarios.value
-  return usuarios.value.filter(
-    (u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
-  )
-})
+const rangoInicio = computed(() =>
+  totalUsuarios.value === 0 ? 0 : (page.value - 1) * limit.value + 1
+)
+const rangoFin = computed(() =>
+  Math.min(page.value * limit.value, totalUsuarios.value)
+)
 
 const cargarUsuarios = async () => {
   loading.value = true
-  const res = await obtenerUsuarios()
+  const res = await obtenerUsuarios({
+    page: page.value,
+    limit: limit.value,
+    search: busqueda.value,
+  })
   loading.value = false
 
   if (!res.ok) {
     toast.error(res.message)
     return
   }
+
   usuarios.value = res.data
+  totalUsuarios.value = res.total
 }
+
+const cambiarPagina = (nuevaPagina) => {
+  page.value = nuevaPagina
+  cargarUsuarios()
+}
+
+let searchTimeout = null
+watch(busqueda, () => {
+  clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => {
+    page.value = 1
+    cargarUsuarios()
+  }, 350)
+})
 
 const abrirCrear = () => {
   usuarioEnEdicion.value = null
@@ -175,6 +238,10 @@ const confirmarEliminar = async () => {
 
   toast.success(res.data.message)
   usuarioAEliminar.value = null
+
+  if (usuarios.value.length === 1 && page.value > 1) {
+    page.value -= 1
+  }
   cargarUsuarios()
 }
 

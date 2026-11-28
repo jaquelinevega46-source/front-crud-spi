@@ -17,15 +17,27 @@ export const loginUsuario = async (correo, contrasenia) => {
   }
 };
 
-export const obtenerUsuarios = async () => {
+export const obtenerUsuarios = async ({page = 1, limit = 10, search = ""}) => {
   try {
-    const response = await axios.get("/users");
+    const response = await axios.get("/users", {
+      params: {
+        page,
+        limit,
+        ...(search.trim() ? { search: search.trim() } : {}),
+      },
+    });
 
-    return { ok: true, data: response.data };
+    return { ok: true, 
+      data: response.data.data,
+    total: response.data.total,
+  page: response.data.page,
+limit: response.data.limit, 
+};
   } catch (error) {
     return {
       ok: false,
       data: [],
+      total: 0,
       message: error.response?.data?.error || "Error al obtener usuarios",
       status: error.response?.status || 500,
     };
